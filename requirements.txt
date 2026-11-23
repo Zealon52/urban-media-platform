@@ -1,0 +1,60 @@
+# team-091 -- Urban Media Commercial Intelligence Platform
+#
+# Exact pins, not floors. Two of these change numeric output rather than just
+# API surface (pandas 3.x renamed and re-defaulted enough that the D1 cube build
+# and the D3 grain encode are not 2.x-compatible), and the submission's
+# reproducibility claim -- same brief twice, same plan -- is only meaningful
+# against a known stack. These are the versions every number in the C4 document
+# and eda_output/ was produced on.
+#
+# Install:  pip install -r requirements.txt
+# Verify:   python test_pipeline.py --fast     (no network, no spend)
+
+# --- data + numerics: D1 audience cube, D3 rate card, D4 allocator ---------
+pandas==3.0.5
+numpy==2.5.2
+scipy==1.18.0
+
+# --- D3's GradientBoostingRegressor (model_d3_price.joblib) ----------------
+# joblib is a hard requirement of the SERVING path, not just training: the
+# pricing engine degrades to the empirical rate card without it, which is
+# correct behaviour but silently drops the model's cold-start contribution.
+scikit-learn==1.9.0
+joblib==1.5.3
+
+# --- D4: CP-SAT integer program over the concave reach envelope ------------
+ortools==9.15.6755
+
+# --- the LLM edge: intake, archetype naming, narrative, critique -----------
+# Only llm_agent.py holds a client; the determinism boundary is structural.
+openai==3.3.1
+python-dotenv==1.2.3
+
+# --- offline analysis figures (price_sensitivity_d3.py) --------------------
+matplotlib==3.11.1
+
+# Not listed on purpose:
+#   langgraph   -- imported only by skills/env-verify/scripts/verify_environment.py,
+#                  which is tooling around the build, not part of D1-D6.
+#   ds_toolkit  -- local package under ds-toolkit-package/, not from PyPI.
+#   pytest      -- test_pipeline.py is deliberately runner-free (one command,
+#                  no test dependency).
+
+# --- D6 unified platform (Streamlit app) ----------------------------------
+streamlit==1.62.0
+altair==6.2.2
+
+# Brief intake. python-docx reads the six client .docx originals; pdfplumber
+# is the PDF path, which the app offers in its intake screen -- it was declared
+# in the app's own requirements but was NOT installed in the stack the
+# committed numbers came from, so a PDF upload would have failed at the demo.
+python-docx==1.2.0
+pdfplumber==0.11.7
+
+# NOTE ON pandas, since the app handover proposed `pandas>=2.2,<3` and this
+# file pins 3.0.5. The pin here wins, and deliberately: 3.0.5 is what is
+# installed, what all six briefs were solved on, and what every number in
+# eda_output/ and the C4 document was produced against. The handover's note
+# reasons from D1-D5 having been WRITTEN on the 2.x API, which was true
+# historically but is not the stack they now run on. Downgrading to 2.x would
+# move the submission off its own reproducibility claim to no benefit.

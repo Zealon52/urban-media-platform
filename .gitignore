@@ -1,0 +1,54 @@
+﻿venv/
+__pycache__/
+*.pyc
+# *.joblib is deliberately NOT ignored: model_d3_price.joblib is D3's trained
+# GradientBoostingRegressor and the pricing engine blends it into every
+# cold-start cell's target price. Ignoring it meant a fresh clone silently
+# priced 44.6% of the grid off a peer median instead of the model.
+
+
+# --- secrets: never commit. See .env.example for the shape. ---------------
+.env
+.env.*
+!.env.example
+secrets.toml
+.streamlit/secrets.toml
+*.key
+*.pem
+
+# Per-clone LLM spend ledger. The CACHE is committed on purpose (a shared
+# cache makes every teammate's rehearsal free); the ledger is local state and
+# would conflict on every pull.
+eda_output/llm_spend.json
+# Append-only, per clone, and it records a machine rather than the
+# code -- four clones appending to one tracked file would conflict on
+# every line. Same reasoning as the ledger above.
+eda_output/run_journal.jsonl
+# Live rep feedback: append-only per clone, same conflict-on-every-line
+# shape as the journal above. The committed artefact is the SAMPLE
+# (eda_output/rep_feedback.sample.jsonl); this is whatever a given clone
+# has recorded, and `feedback_capture.py --seed` regenerates it.
+eda_output/rep_feedback.jsonl
+
+# --- D6 app (added with the app handover) ---------------------------------
+# `venv/` above does NOT match `.venv/`, and the app's own virtual environment
+# is ~662 MB. Without this line one careless `git add -A` ships all of it.
+.venv/
+env/
+*.pyo
+.pytest_cache/
+.ipynb_checkpoints/
+# The app's SQLite database is CREATED ON FIRST RUN and holds uploaded briefs
+# as BLOBs, so it is machine-local, grows with use, and would conflict on every
+# pull. The schema is app/db/schema.sql, which IS committed -- that is the part
+# the app actually needs; the database rebuilds itself from it.
+app_data/
+
+# --- hackathon-supplied data and derived artefacts: never commit ----------
+Urban Media Datasets/
+eda_output/
+*.csv
+*.docx
+*.parquet
+*.joblib
+*.mp4

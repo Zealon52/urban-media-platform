@@ -1,0 +1,1554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="C4 system design for Team 091's Urban Media commercial-intelligence platform: context, container and component views.">
+<!-- Self-contained by design: no external stylesheets, scripts, fonts or images,
+     so it opens with no network and prints to PDF from any browser. -->
+<title>Urban Media C4 Model</title>
+<style>
+  :root{
+    --bg:#f2f3f9; --panel:#ffffff; --ink:#1f242f; --ink-2:#5d6471; --ink-3:#868d99;
+    --rule:#d6dae2; --rule-2:#e5e8ee; --accent:#1f242f; --accent-soft:#e5e8ee;
+    --warn:#7a3e4e; --warn-soft:#f4eaed; --ok:#256b55; --ok-soft:#e6efec;
+    --citron:#eefb87;
+    --c4-person:#5a54a8; --c4-system:#1f242f; --c4-ext:#5d6471;
+    --c4-container:#256b55; --c4-component:#eceaf6; --c4-store:#7a3e4e;
+    --code-bg:#e5e8ee; --shadow:0 1px 2px rgba(31,36,47,.05),0 1px 3px rgba(31,36,47,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#f2f3f9; --panel:#ffffff; --ink:#1f242f; --ink-2:#5d6471; --ink-3:#868d99;
+      --rule:#d6dae2; --rule-2:#e5e8ee; --accent:#1f242f; --accent-soft:#e5e8ee;
+      --warn:#7a3e4e; --warn-soft:#f4eaed; --ok:#256b55; --ok-soft:#e6efec;
+      --citron:#eefb87;
+      --c4-person:#5a54a8; --c4-system:#1f242f; --c4-ext:#5d6471;
+      --c4-container:#256b55; --c4-component:#eceaf6; --c4-store:#7a3e4e;
+      --code-bg:#e5e8ee; --shadow:0 1px 2px rgba(31,36,47,.05),0 1px 3px rgba(31,36,47,.08);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#f2f3f9; --panel:#ffffff; --ink:#1f242f; --ink-2:#5d6471; --ink-3:#868d99;
+    --rule:#d6dae2; --rule-2:#e5e8ee; --accent:#1f242f; --accent-soft:#e5e8ee;
+    --warn:#7a3e4e; --warn-soft:#f4eaed; --ok:#256b55; --ok-soft:#e6efec;
+    --citron:#eefb87;
+    --c4-person:#5a54a8; --c4-system:#1f242f; --c4-ext:#5d6471;
+    --c4-container:#256b55; --c4-component:#eceaf6; --c4-store:#7a3e4e;
+    --code-bg:#e5e8ee; --shadow:0 1px 2px rgba(31,36,47,.05),0 1px 3px rgba(31,36,47,.08);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:400 15px/1.62 "Messina Sans","Helvetica Neue",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 96px}
+
+  /* ---------- masthead ---------- */
+  header.mast{padding:clamp(40px,7vw,76px) 0 28px;border-bottom:1px solid var(--rule)}
+  .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  h1{font-size:clamp(1.85rem,4.4vw,2.9rem);line-height:1.1;margin:.5rem 0 .35rem;letter-spacing:-.02em;font-weight:650}
+  .dek{font-size:clamp(1rem,1.6vw,1.14rem);color:var(--ink-2);max-width:60ch;margin:0}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+  .chip{font-size:.74rem;padding:4px 10px;border:1px solid var(--rule);border-radius:99px;color:var(--ink-2);background:var(--panel)}
+  .chip b{color:var(--ink);font-weight:600}
+
+  /* ---------- toc ---------- */
+  nav.toc{margin:28px 0 0;padding:18px 20px;background:var(--panel);border:1px solid var(--rule-2);border-radius:10px;box-shadow:var(--shadow)}
+  nav.toc h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 10px}
+  nav.toc ol{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px 24px}
+  nav.toc a{color:var(--ink-2);text-decoration:none;font-size:.9rem;display:block;padding:3px 0;border-bottom:1px solid transparent}
+  nav.toc a:hover{color:var(--accent);border-bottom-color:var(--rule)}
+  nav.toc .num{color:var(--ink-3);font-variant-numeric:tabular-nums;margin-right:8px;font-size:.8rem}
+
+  /* ---------- sections ---------- */
+  section{padding-top:56px}
+  h2.sec{font-size:clamp(1.3rem,2.6vw,1.72rem);letter-spacing:-.015em;margin:0 0 .2rem;font-weight:640;scroll-margin-top:20px}
+  h2.sec .num{background:var(--citron);color:#1f242f;font-weight:700;margin-right:.55rem;padding:0 .5rem;border-radius:6px;font-variant-numeric:tabular-nums}
+  h3{font-size:1.06rem;margin:36px 0 .4rem;font-weight:640;letter-spacing:-.01em}
+  h4{font-size:.86rem;margin:26px 0 .4rem;font-weight:650;letter-spacing:.02em;text-transform:uppercase;color:var(--ink-3)}
+  p{margin:.7rem 0;max-width:76ch}
+  .lede{color:var(--ink-2);max-width:74ch;margin:.5rem 0 0}
+  code,kbd{font-family:"Messina Sans Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.855em;background:var(--code-bg);color:#1f242f;padding:.1em .36em;border-radius:4px}
+  a{color:var(--accent)}
+  ul,ol.body{max-width:76ch;padding-left:1.15rem}
+  li{margin:.3rem 0}
+  hr{border:0;border-top:1px solid var(--rule-2);margin:44px 0}
+
+  /* ---------- callouts ---------- */
+  .note{border-left:3px solid var(--rule);background:var(--panel);padding:12px 16px;border-radius:0 8px 8px 0;margin:18px 0;max-width:80ch;font-size:.93rem;color:var(--ink-2)}
+  .note b{color:var(--ink)}
+  .note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+  .note.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+
+  /* ---------- C4 diagram primitives ---------- */
+  figure.c4{margin:22px 0 8px;padding:20px 16px;background:var(--panel);border:1px solid var(--rule-2);border-radius:12px;box-shadow:var(--shadow);overflow-x:auto}
+  figure.c4 .inner{min-width:640px}
+  figcaption{font-size:.8rem;color:var(--ink-3);margin-top:14px;padding-top:10px;border-top:1px solid var(--rule-2)}
+  figcaption b{color:var(--ink-2);font-weight:600}
+
+  .lane{display:grid;grid-template-columns:8.5rem 1fr;gap:0 14px;align-items:center}
+  .lane > .lane-lbl{font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);text-align:right;font-weight:650;padding:6px 0}
+  .tier{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+  .tier.left{justify-content:flex-start}
+
+  .node{
+    flex:1 1 172px;max-width:270px;min-width:150px;padding:11px 13px;border-radius:8px;
+    color:#fff;line-height:1.34;border:1px solid rgba(255,255,255,.16)
+  }
+  .node .n-name{font-weight:660;font-size:.93rem;letter-spacing:-.005em}
+  .node .n-type{font-size:.68rem;opacity:.8;margin-top:1px;font-family:"Messina Sans Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .node .n-desc{font-size:.775rem;opacity:.94;margin-top:7px}
+  .node.person{background:var(--c4-person)}
+  .node.person .n-name::before{content:"◍ ";opacity:.7}
+  .node.system{background:var(--c4-system);flex-basis:100%;max-width:none}
+  .node.ext{background:var(--c4-ext)}
+  .node.container{background:var(--c4-container)}
+  .node.component{background:var(--c4-component);color:#0c1a26;border-color:rgba(0,0,0,.12)}
+  .node.component .n-type,.node.component .n-desc{opacity:.85}
+  .node code{background:#e5e8ee;color:#1f242f;border:1px solid rgba(31,36,47,.14);border-radius:4px}
+  .node.component code{background:#ffffff;color:#1f242f}
+  .node.store{background:var(--c4-store);border-radius:8px 8px 22px 22px/8px 8px 10px 10px}
+  .node.dashed{border-style:dashed;border-color:rgba(255,255,255,.55)}
+  .node.wide{flex-basis:100%;max-width:none}
+
+  .band{display:flex;justify-content:center;gap:clamp(10px,3vw,34px);padding:8px 0;flex-wrap:wrap}
+  .band.tight{padding:4px 0}
+  .edge{display:flex;flex-direction:column;align-items:center;gap:2px;max-width:230px;text-align:center}
+  .edge::before{content:"";width:1px;height:11px;background:var(--rule)}
+  .edge::after{content:"▼";font-size:.52rem;color:var(--rule);line-height:1}
+  .edge.up::after{content:""}
+  .edge.up::before{content:"▲";width:auto;height:auto;font-size:.52rem;color:var(--rule);background:none}
+  .edge .lbl{font-size:.735rem;color:var(--ink-2);background:var(--bg);border:1px solid var(--rule-2);border-radius:5px;padding:2px 7px}
+  .edge .lbl em{font-style:normal;color:var(--ink-3);font-family:"Messina Sans Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em}
+
+  .grp{border:1px dashed var(--rule);border-radius:10px;padding:12px 12px 10px;margin:0;position:relative;flex:1 1 100%}
+  .grp > .grp-lbl{position:absolute;top:-9px;left:12px;background:var(--panel);padding:0 7px;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:650}
+
+  /* ---------- legend ---------- */
+  .legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin:16px 0 0;padding:14px 16px;background:var(--panel);border:1px solid var(--rule-2);border-radius:10px}
+  .legend .item{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--ink-2)}
+  .sw{width:26px;height:15px;border-radius:4px;flex:none;border:1px solid rgba(255,255,255,.2)}
+
+  /* ---------- tables ---------- */
+  .tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--rule-2);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;min-width:600px;font-size:.855rem}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+  thead th{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);background:var(--bg);font-weight:650;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:0}
+  td code{white-space:nowrap}
+  td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tag{display:inline-block;font-size:.68rem;padding:1px 7px;border-radius:99px;border:1px solid var(--rule);color:var(--ink-2);white-space:nowrap}
+  .tag.ai{background:var(--citron);border-color:transparent;color:#1f242f;font-weight:600}
+  .tag.det{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+  .tag.opt{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+
+  pre.mermaid{background:var(--panel);border:1px solid var(--rule-2);border-radius:12px;padding:18px;overflow-x:auto;margin:20px 0;box-shadow:var(--shadow);text-align:center}
+
+  footer{margin-top:72px;padding-top:22px;border-top:1px solid var(--rule);color:var(--ink-3);font-size:.82rem}
+
+
+  /* ---------- runtime sequence (renderer-free) ---------- */
+  .seq-wrap{counter-reset:seq;margin:20px 0;padding:18px 20px;background:var(--panel);border:1px solid var(--rule-2);border-radius:12px;box-shadow:var(--shadow)}
+  .seq-key{display:flex;flex-wrap:wrap;gap:6px 16px;padding-bottom:12px;margin-bottom:6px;border-bottom:1px solid var(--rule-2);font-size:.75rem;color:var(--ink-3)}
+  .seq-key b{color:var(--ink-2);font-family:"Messina Sans Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  ol.seq{list-style:none;margin:8px 0;padding:0}
+  ol.seq li{counter-increment:seq;position:relative;padding:5px 0 5px 2.6rem;font-size:.885rem;line-height:1.5;border-bottom:1px dashed var(--rule-2)}
+  ol.seq li:last-child{border-bottom:0}
+  ol.seq li::before{content:counter(seq);position:absolute;left:0;top:6px;width:2rem;color:var(--ink-3);font-variant-numeric:tabular-nums;font-size:.78rem;text-align:right}
+  .hop{font-family:"Messina Sans Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.75rem;color:#1f242f;background:var(--citron);padding:2px 7px;border-radius:5px;white-space:nowrap}
+  .branch{margin:14px 0 14px 8px;border-left:3px solid var(--rule);border-radius:0 8px 8px 0;padding:10px 0 2px 14px}
+  .branch.stop{border-left-color:var(--warn);background:var(--warn-soft)}
+  .branch.go{border-left-color:var(--ok)}
+  .branch .b-lbl{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;font-weight:650;color:var(--ink-3);margin-bottom:4px}
+  .branch.stop .b-lbl{color:var(--warn)}
+  .branch.go .b-lbl{color:var(--ok)}
+  .branch .b-body{font-size:.885rem;color:var(--ink-2);max-width:74ch}
+  .branch .b-body ol.seq{margin-top:4px}
+  @media (max-width:640px){ol.seq li{padding-left:2.2rem}}
+
+  @media (max-width:720px){
+    .lane{grid-template-columns:1fr}
+    .lane > .lane-lbl{text-align:left;padding-top:14px}
+  }
+  @media print{
+    body{background:#fff}
+    figure.c4,.tbl-wrap,nav.toc{box-shadow:none}
+    section{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">Agentic AI Hackathon 2026 &middot; The AgentIQ Frontier &middot; Team 091</div>
+  <h1>Urban Media Commercial Intelligence Platform</h1>
+  <p class="dek">System design in the C4 model — Context, Container and Component views for the
+  brief-to-proposal pipeline behind 11,163 digital out-of-home screens across three markets.</p>
+  <div class="chips">
+    <span class="chip"><b>Repo</b> team-091</span>
+    <span class="chip"><b>Language</b> Python 3.11 &middot; pandas &middot; OR-Tools &middot; scikit-learn &middot; Streamlit</span>
+    <span class="chip"><b>Deliverables covered</b> D1&ndash;D6</span>
+    <span class="chip"><b>LLM</b> Azure OpenAI (gpt-5.4-nano / gpt-5.4-mini)</span>
+    <span class="chip"><b>Status</b> D1&ndash;D5 running end-to-end; D6 integrating</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#read"><span class="num">0</span>How to read this document</a></li>
+    <li><a href="#l1"><span class="num">1</span>Level 1 — System Context</a></li>
+    <li><a href="#l2"><span class="num">2</span>Level 2 — Containers</a></li>
+    <li><a href="#l3"><span class="num">3</span>Level 3 — Components</a></li>
+    <li><a href="#runtime"><span class="num">4</span>Runtime view — brief to plan</a></li>
+    <li><a href="#map"><span class="num">5</span>Deliverable-to-architecture map</a></li>
+    <li><a href="#cross"><span class="num">6</span>Cross-cutting concerns</a></li>
+    <li><a href="#adr"><span class="num">7</span>Key design decisions</a></li>
+    <li><a href="#deploy"><span class="num">8</span>Deployment view</a></li>
+    <li><a href="#limits"><span class="num">9</span>Known limits and next steps</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ 0 -->
+<section id="read">
+  <h2 class="sec"><span class="num">0</span>How to read this document</h2>
+  <p class="lede">Three zoom levels, each one a decomposition of a single box in the level above.
+  Every diagram is followed by a relationship table, because an arrow can show <em>that</em> two
+  things talk and a table can show <em>how</em> — the protocol, the payload and the grain.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Level</th><th>Question it answers</th><th>Audience</th><th>Scope in this system</th></tr></thead>
+      <tbody>
+        <tr><td><b>1 — Context</b></td><td>What is this system, who uses it, what does it depend on?</td><td>Everyone, including non-technical</td><td>One box: the platform. Four people, three external systems.</td></tr>
+        <tr><td><b>2 — Container</b></td><td>What are the deployable / runnable pieces and how do they interact?</td><td>Engineers, reviewers</td><td>The Streamlit app, the adapter façade, D5, the four engines, the LLM gateway, the batch builders, five data stores.</td></tr>
+        <tr><td><b>3 — Component</b></td><td>What's inside a container and what is each part responsible for?</td><td>Whoever is changing the code</td><td>Four component views: D5 Orchestrator, D3 Pricing, D4 Optimiser, D1/D2 + LLM gateway.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="legend">
+    <div class="item"><span class="sw" style="background:var(--c4-person)"></span> Person</div>
+    <div class="item"><span class="sw" style="background:var(--c4-system)"></span> Software system (in scope)</div>
+    <div class="item"><span class="sw" style="background:var(--c4-ext)"></span> External system / dependency</div>
+    <div class="item"><span class="sw" style="background:var(--c4-container)"></span> Container</div>
+    <div class="item"><span class="sw" style="background:var(--c4-component)"></span> Component</div>
+    <div class="item"><span class="sw" style="background:var(--c4-store);border-radius:4px 4px 9px 9px"></span> Data store</div>
+    <div class="item"><span class="sw" style="background:transparent;border:1px dashed var(--rule)"></span> Not yet built / optional</div>
+  </div>
+
+  <div class="note"><b>Naming convention used throughout.</b> <code>D1</code>–<code>D6</code> are the six
+  deliverables from the problem statement. Where a box maps to a real file, the filename is given in
+  the box, so the diagram is navigable in the repo rather than being a parallel fiction.</div>
+</section>
+
+<hr>
+
+<!-- ============================================================ 1 -->
+<section id="l1">
+  <h2 class="sec"><span class="num">1</span>Level 1 — System Context</h2>
+  <p class="lede">The platform sits between a sales team that has to defend numbers in a meeting and a
+  dataset that never observed the thing everyone wants to buy. There is no footfall counter on any
+  screen in the network; audience is inferred, and the system's job is to make every inferred number
+  traceable back to a column.</p>
+
+  <figure class="c4">
+    <div class="inner">
+      <div class="tier">
+        <div class="node person">
+          <div class="n-name">Sales Rep / Account Manager</div>
+          <div class="n-type">[Person] primary user</div>
+          <div class="n-desc">Pastes or uploads a client brief, adjusts constraints, and has to answer
+          "why is this screen 60.97?" live in a client meeting.</div>
+        </div>
+        <div class="node person">
+          <div class="n-name">Revenue / Pricing Manager</div>
+          <div class="n-type">[Person]</div>
+          <div class="n-desc">Owns the rate card and discount discipline. Cares about the win
+          probability behind a quote and about floors never breaching the network minimum.</div>
+        </div>
+        <div class="node person">
+          <div class="n-name">Inventory / Ops Planner</div>
+          <div class="n-type">[Person]</div>
+          <div class="n-desc">Owns the 6 rotation slots per screen per time block. Cares that a plan
+          never oversells physical capacity or a scarce event slot.</div>
+        </div>
+        <div class="node person dashed">
+          <div class="n-name">Client / Advertiser</div>
+          <div class="n-type">[Person] indirect</div>
+          <div class="n-desc">Never touches the system. Receives the exported proposal — plan lines,
+          impressions, reach and the rationale for each.</div>
+        </div>
+      </div>
+
+      <div class="band">
+        <div class="edge"><span class="lbl">brief in, plan + rationale out <em>Streamlit UI</em></span></div>
+        <div class="edge"><span class="lbl">reviews quotes, win rates, stretch option</span></div>
+        <div class="edge"><span class="lbl">reviews slot usage vs. remaining capacity</span></div>
+        <div class="edge up"><span class="lbl">exported proposal <em>CSV / MD / JSON</em></span></div>
+      </div>
+
+      <div class="tier">
+        <div class="node system">
+          <div class="n-name">Urban Media Commercial Intelligence Platform</div>
+          <div class="n-type">[Software System] — this system</div>
+          <div class="n-desc">Reads a free-text campaign brief; infers who is in front of every screen
+          in every time block; scores screens against the brief; prices each screen&times;block with a
+          floor / target / cap and a win probability; solves for the slot package that maximises
+          deduplicated reach under a hard budget and hard slot capacity; and either returns a plan
+          where every number has a derivation, or refuses and says which stage emptied.</div>
+        </div>
+      </div>
+
+      <div class="band">
+        <div class="edge"><span class="lbl">reads 14 operational tables <em>CSV, read-only</em></span></div>
+        <div class="edge"><span class="lbl">brief comprehension &amp; narrative <em>HTTPS, Azure OpenAI</em></span></div>
+        <div class="edge"><span class="lbl">artifacts, prompt cache, model binary <em>git</em></span></div>
+      </div>
+
+      <div class="tier">
+        <div class="node ext">
+          <div class="n-name">Urban Media operational data</div>
+          <div class="n-type">[External] 14 CSV extracts</div>
+          <div class="n-desc">bookings 191,109 &middot; lost leads 1,450 &middot; ridership actuals 2,049,632
+          &middot; screens 11,163 &middot; locations 910 &middot; POIs 1,375 &middot; events 367 &middot;
+          clients 520 &middot; route schedules 19,838 &middot; route stops 2,436 &middot; vehicles 854
+          &middot; zones 30 &middot; cities 3 &middot; slots 6. No coordinates, no footfall counters.</div>
+        </div>
+        <div class="node ext">
+          <div class="n-name">Azure OpenAI Service</div>
+          <div class="n-type">[External] gpt-5.4-nano / gpt-5.4-mini deployments</div>
+          <div class="n-desc">Reads text and writes prose. Never prices, scores, allocates or chooses.
+          Hackathon allowance is $5 shared across four people and 500 rpm shared — so every call is
+          budgeted, capped and cached.</div>
+        </div>
+        <div class="node ext">
+          <div class="n-name">Git repository (team-091)</div>
+          <div class="n-type">[External] source + artifact store</div>
+          <div class="n-desc">Carries code, the committed prompt cache (so demo rehearsal is free for
+          the whole team), the trained price model and its model card. Never carries the API key — a
+          pre-commit hook enforces that.</div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Figure 1.</b> System context. The dashed Client box is included deliberately: the
+    proposal export is a real system output with a real audience, and it is the reason the rationale
+    text is written in plain language rather than in model vocabulary.</figcaption>
+  </figure>
+
+  <h4>Context relationships</h4>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>From</th><th>To</th><th>Relationship</th><th>Technology / notes</th></tr></thead>
+      <tbody>
+        <tr><td>Sales Rep</td><td>Platform</td><td>Submits a brief (upload or paste), edits constraints, requests a re-solve, exports the proposal</td><td>Streamlit web UI on localhost</td></tr>
+        <tr><td>Revenue Manager</td><td>Platform</td><td>Inspects the price band, its basis, and the modelled win probability per line</td><td>Same UI, drill-down panel</td></tr>
+        <tr><td>Ops Planner</td><td>Platform</td><td>Inspects slots taken vs. remaining capacity per screen&times;block</td><td>Same UI, plan table</td></tr>
+        <tr><td>Platform</td><td>Urban Media data</td><td>Reads all 14 tables at build time; never writes back</td><td>pandas <code>read_csv</code> from <code>Urban Media Datasets/</code></td></tr>
+        <tr><td>Platform</td><td>Azure OpenAI</td><td>Structured brief comprehension (nano), plan narrative + critic (mini)</td><td><code>openai</code> SDK, Azure endpoint, <code>2024-10-21</code> API version, key from env only</td></tr>
+        <tr><td>Platform</td><td>Git repo</td><td>Reads the trained model + card and the prompt cache; writes new cache entries for commit</td><td>Filesystem; secrets excluded by <code>.gitignore</code> + hook</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn"><b>One external constraint shapes the whole design.</b> Both the Azure
+  endpoint and the repo require the company network (office Wi-Fi or VPN); off-network the API
+  returns <code>403</code>, which is not a bad key. Every LLM-touching path therefore has a
+  deterministic fallback, and no deliverable is unrunnable without a key.</div>
+</section>
+
+<hr>
+
+<!-- ============================================================ 2 -->
+<section id="l2">
+  <h2 class="sec"><span class="num">2</span>Level 2 — Containers</h2>
+  <p class="lede">Seven runtime pieces and five stores. The shape is deliberate: the UI talks to exactly
+  one thing, D5 owns every decision <em>between</em> the engines, and the engines themselves are pure
+  arithmetic that can be run headless from the command line.</p>
+
+  <figure class="c4">
+    <div class="inner">
+
+      <div class="lane"><div class="lane-lbl">Presentation</div>
+        <div class="tier">
+          <div class="node container wide">
+            <div class="n-name">D6 &mdash; Planner Web App</div>
+            <div class="n-type">[Container] Streamlit &middot; app.py + ui.py</div>
+            <div class="n-desc">Four-step flow: <em>Brief</em> (upload / paste / sample) &rarr;
+            <em>Agents</em> (live run rail with per-stage log) &rarr; <em>Plan</em> (lines, KPIs,
+            charts, per-screen evidence drill-down) &rarr; <em>Proposal</em> (rendered report + CSV /
+            JSON export). Holds no business logic and no engine imports.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">in-process function calls, plain dicts only <em>adapters.orchestrate(...)</em></span></div></div>
+
+      <div class="lane"><div class="lane-lbl">Façade</div>
+        <div class="tier">
+          <div class="node container wide">
+            <div class="n-name">Adapter layer</div>
+            <div class="n-type">[Container] adapters.py &mdash; anti-corruption layer</div>
+            <div class="n-desc">The single seam between UI and engines. Seven numbered wire points
+            (<code>configure</code>, <code>warm</code>, <code>parse_brief</code>, <code>score</code>,
+            <code>price</code>, <code>allocate</code>, <code>orchestrate</code>,
+            <code>screen_detail</code>), each with a deterministic stub behind it. The UI is
+            demonstrable with zero engines loaded and zero API key — which is also the backup demo.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">dataclasses in, <em>Plan</em> or <em>Refusal</em> out</span></div></div>
+
+      <div class="lane"><div class="lane-lbl">Orchestration</div>
+        <div class="tier">
+          <div class="node container wide">
+            <div class="n-name">D5 &mdash; Agentic Orchestrator</div>
+            <div class="n-type">[Container] build_d5_orchestrator.py &middot; 2,300 lines</div>
+            <div class="n-desc">Owns the five decisions no engine owned: which market the brief means,
+            which dayparts the network can actually measure, how big the shortlist should be, what the
+            budget really is for this client cohort, and what to do when a stage returns nothing. Emits
+            a <code>Plan</code> with a per-line derivation, or a <code>Refusal</code> naming the first
+            stage that emptied.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band">
+        <div class="edge"><span class="lbl">audience profiles + pools</span></div>
+        <div class="edge"><span class="lbl">brief &rarr; ranked shortlist</span></div>
+        <div class="edge"><span class="lbl">quote grid <em>floor / target / cap / p_win</em></span></div>
+        <div class="edge"><span class="lbl">candidate cells &rarr; slot package</span></div>
+      </div>
+
+      <div class="lane"><div class="lane-lbl">Domain engines</div>
+        <div class="tier">
+          <div class="node container">
+            <div class="n-name">D1 &mdash; Audience Profile Engine</div>
+            <div class="n-type">[Container] build_d1_audience_profiles.py</div>
+            <div class="n-desc">Riders &rarr; trip &rarr; route &rarr; stop &rarr; screen inference
+            chain. Publishes people, dwell, visibility and a shared-audience <code>pool_id</code> per
+            screen &times; day type &times; time block.</div>
+          </div>
+          <div class="node container">
+            <div class="n-name">D2 &mdash; Relevance Scorer</div>
+            <div class="n-type">[Container] build_d2_relevance_scorer.py</div>
+            <div class="n-desc">Inventory hard-filter (groups ORed, fields ANDed) then a weighted fit
+            score over daypart, audience segment, tier and zone proximity. Emits a reason string per
+            screen.</div>
+          </div>
+          <div class="node container">
+            <div class="n-name">D3 &mdash; Pricing Engine</div>
+            <div class="n-type">[Container] pricing_engine_d3.py</div>
+            <div class="n-desc">Empirical rate card, GBM blend by booking credibility, censored
+            win/loss elasticity, client-cohort relationship shift, date-aware event and ridership band
+            adjustments.</div>
+          </div>
+          <div class="node container">
+            <div class="n-name">D4 &mdash; Impressions Optimizer</div>
+            <div class="n-type">[Container] build_d4_allocator.py</div>
+            <div class="n-desc">CP-SAT integer program over slots, maximising deduplicated reach with
+            a concave saturation envelope; greedy fallback with a stated approximation bound.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight">
+        <div class="edge"><span class="lbl">date-aware band adjustments</span></div>
+        <div class="edge"><span class="lbl">text in, structure or prose out</span></div>
+      </div>
+
+      <div class="lane"><div class="lane-lbl">Shared services</div>
+        <div class="tier">
+          <div class="node container">
+            <div class="n-name">Date-aware adjustment modules</div>
+            <div class="n-type">[Container] event_overlap.py &middot; ridership_trend.py</div>
+            <div class="n-desc">Real <code>[start,end]</code> event overlap with the actual campaign
+            window (impressions bump + price band shift), and per corridor&times;block OLS ridership
+            trend accepted only at <code>p &lt; threshold</code>.</div>
+          </div>
+          <div class="node container">
+            <div class="n-name">LLM Gateway</div>
+            <div class="n-type">[Container] llm_agent.py</div>
+            <div class="n-desc">The only module that holds an Azure client. Budget accounting, content-
+            addressed disk cache, persisted hard call cap, 429 back-off, closed output vocabularies,
+            quote verification.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight">
+        <div class="edge"><span class="lbl">reads marts</span></div>
+        <div class="edge"><span class="lbl">reads model + card</span></div>
+        <div class="edge"><span class="lbl">reads / writes cache &amp; ledger</span></div>
+      </div>
+
+      <div class="lane"><div class="lane-lbl">Data stores</div>
+        <div class="tier">
+          <div class="node store">
+            <div class="n-name">Raw extracts</div>
+            <div class="n-type">[Store] Urban Media Datasets/*.csv</div>
+            <div class="n-desc">14 tables, read-only, the single source of truth.</div>
+          </div>
+          <div class="node store">
+            <div class="n-name">Analytical marts</div>
+            <div class="n-type">[Store] eda_output/</div>
+            <div class="n-desc">audience_cube 133,956 &middot; audience_profiles 11,163 &middot;
+            pricing_grain 133,956 &middot; pricing_quotes 66,978 &middot; win_loss 191,753 &middot;
+            training_table 191,109 &middot; seasonality, corridor overlap, imputation contract.</div>
+          </div>
+          <div class="node store">
+            <div class="n-name">Price model</div>
+            <div class="n-type">[Store] model_d3_price.joblib + .model_card.json</div>
+            <div class="n-desc">GradientBoostingRegressor plus the feature order and imputation
+            contract it was trained under.</div>
+          </div>
+          <div class="node store">
+            <div class="n-name">Prompt cache</div>
+            <div class="n-type">[Store] eda_output/llm_cache.json &mdash; committed</div>
+            <div class="n-desc">Content-addressed on prompt + model + version. Committed on purpose:
+            re-runs are free for the whole team.</div>
+          </div>
+          <div class="node store dashed">
+            <div class="n-name">Spend ledger</div>
+            <div class="n-type">[Store] eda_output/llm_spend.json &mdash; git-ignored</div>
+            <div class="n-desc">Per-clone call count and dollar total. Enforces the cap across
+            re-runs; honestly, it is per clone, not per team.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">built once, offline, before any UI run</span></div></div>
+
+      <div class="lane"><div class="lane-lbl">Batch / offline</div>
+        <div class="tier">
+          <div class="node container">
+            <div class="n-name">Feature builders</div>
+            <div class="n-type">[Container] build_training_table.py</div>
+            <div class="n-desc">Cleans and joins the 14 tables into the leakage-free training table,
+            the unioned win/loss table, and the screen&times;block&times;day-type pricing grain.</div>
+          </div>
+          <div class="node container">
+            <div class="n-name">Encoder</div>
+            <div class="n-type">[Container] encode_pricing_grain.py</div>
+            <div class="n-desc">Persists the exact imputation values used, one-hot encodes, and hard-
+            fails if any feature column still holds a NaN.</div>
+          </div>
+          <div class="node container">
+            <div class="n-name">Model trainer</div>
+            <div class="n-type">[Container] skills/data-analyst/model_selector.py</div>
+            <div class="n-desc">Fits and writes the joblib and its model card.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">HTTPS, key from environment <em>company network only</em></span></div></div>
+
+      <div class="lane"><div class="lane-lbl">External</div>
+        <div class="tier">
+          <div class="node ext wide">
+            <div class="n-name">Azure OpenAI Service</div>
+            <div class="n-type">[External System]</div>
+            <div class="n-desc">Two deployments in use: a nano deployment for intake and a mini
+            deployment for narrative and critique. Deployment names, not model names, are what the
+            client sends.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <figcaption><b>Figure 2.</b> Container view. Lanes are layers, not processes — everything except
+    Azure runs in one Python process today. The layering is what makes it deployable as a service
+    later without touching the engines: only the façade would change.</figcaption>
+  </figure>
+
+  <h4>Container relationships</h4>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>From</th><th>To</th><th>Purpose</th><th>Interface</th></tr></thead>
+      <tbody>
+        <tr><td>D6 App</td><td>Adapter layer</td><td>Every business operation the UI performs</td><td>In-process calls; JSON-safe dicts both ways, no engine types cross the seam</td></tr>
+        <tr><td>Adapter layer</td><td>D5</td><td>The one call that produces a plan</td><td><code>Orchestrator.plan(brief, constraints)</code> &rarr; <code>Plan | Refusal</code></td></tr>
+        <tr><td>Adapter layer</td><td>Stubs</td><td>Fallback when engines or key are absent</td><td>Deterministic synthetic plan; identical dict shape, flagged as stub in <code>health()</code></td></tr>
+        <tr><td>D5</td><td>D2</td><td>Brief &rarr; hard-filtered, scored shortlist with reasons</td><td><code>parse_brief</code>, <code>apply_inventory_filter</code>, <code>score_screens</code></td></tr>
+        <tr><td>D5</td><td>D3</td><td>Price band + win probability for every candidate cell</td><td><code>PricingEngineD3.quote_grid(...)</code> &rarr; <code>PriceQuote</code> rows</td></tr>
+        <tr><td>D5</td><td>D4</td><td>Slot allocation under budget and capacity</td><td><code>allocate(...)</code>; objective = reach / frequency / impressions</td></tr>
+        <tr><td>D5</td><td>LLM Gateway</td><td>Brief comprehension, plan narrative, plan critique</td><td><code>read_brief</code>, <code>merge_into_brief</code>, <code>review_plan</code></td></tr>
+        <tr><td>D2, D4</td><td>D1 marts</td><td>People, dwell, visibility, audience mix, <code>pool_id</code></td><td><code>audience_profiles.csv</code>, <code>audience_cube.csv</code></td></tr>
+        <tr><td>D3</td><td>Price model</td><td>Point estimate for thin-history cells</td><td><code>joblib.load</code> + feature order from the model card</td></tr>
+        <tr><td>D3, D4</td><td>event_overlap, ridership_trend</td><td>Date-aware band shift and impressions bump for the actual campaign window</td><td><code>event_price_adjustment</code>, <code>event_impressions_bump</code>, <code>ridership_price_adjustment</code></td></tr>
+        <tr><td>LLM Gateway</td><td>Azure OpenAI</td><td>Chat completions, JSON-bounded output</td><td>HTTPS; cache checked first, cap checked second, call third</td></tr>
+        <tr><td>Batch builders</td><td>Marts</td><td>One-time rebuild of every derived table</td><td>CLI: <code>python build_training_table.py</code> &rarr; <code>encode_pricing_grain.py</code> &rarr; trainer</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note ok"><b>Why the façade earns its place.</b> It is the reason the app was demonstrable
+  before the engines were wired, the reason a broken engine degrades one panel instead of the whole
+  demo, and the reason the UI has never needed to import pandas. Four people worked in parallel across
+  that seam.</div>
+</section>
+
+<hr>
+
+<!-- ============================================================ 3 -->
+<section id="l3">
+  <h2 class="sec"><span class="num">3</span>Level 3 — Components</h2>
+  <p class="lede">Four containers are worth opening: the orchestrator because it holds the judgement,
+  D3 and D4 because they hold the maths, and D1/D2 + the gateway because that is where language meets
+  arithmetic.</p>
+
+  <!-- 3.1 -->
+  <h3>3.1 &nbsp;D5 — Agentic Orchestrator</h3>
+  <p>D5's premise is that four engines that each work in isolation still produce a confident wrong
+  answer at the joins. Every component below exists because a specific join failed on a real brief.</p>
+
+  <figure class="c4">
+    <div class="inner">
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">Intake &amp; resolution</span>
+          <div class="tier left">
+            <div class="node component">
+              <div class="n-name">resolve_market</div>
+              <div class="n-type">[Component] &rarr; MarketResolution</div>
+              <div class="n-desc">Five-step cascade from brief text to one of three real markets:
+              exact name, alias, city column, screen-prefix, then explicit non-resolution. A brief
+              naming a city that does not exist is refused with the three real markets listed rather
+              than silently planned in the wrong one.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">resolve_blocks / evidenced_blocks</div>
+              <div class="n-type">[Component] &rarr; BlockPlan</div>
+              <div class="n-desc">A daypart preference is a scoring signal in D2 and never removes a
+              screen. A daypart the network cannot measure at all is a different problem, so D5 filters
+              it — and says it did.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">unsupported_asks / absent_entities</div>
+              <div class="n-type">[Component] disclosure</div>
+              <div class="n-desc">Asks with no representation in the data (screen orientation, a POI
+              type that does not exist) are surfaced as stated gaps, never proxied. Label noise is
+              stripped so a field name never matches as a requirement.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">resolved brief + disclosures</span></div></div>
+
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">Sizing, budget &amp; cohort</span>
+          <div class="tier left">
+            <div class="node component">
+              <div class="n-name">shortlist_size</div>
+              <div class="n-type">[Component] &rarr; SizeDecision</div>
+              <div class="n-desc">Derives the shortlist length from what the budget can fund at the
+              shortlist's own median price, and states the arithmetic instead of picking a top-N.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">budget_verdict</div>
+              <div class="n-type">[Component] &rarr; BudgetVerdict</div>
+              <div class="n-desc">Solves at the stated budget and reports a separate stretch option at
+              the client cohort's real <code>budget_variance_pct</code> — never quietly spends the
+              tolerance as if it were the budget. Emits <code>BUDGET_UNUSABLE</code> when even the
+              cheapest line is unaffordable.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">infer_industry / build_cohort</div>
+              <div class="n-type">[Component] &rarr; IndustryGuess, Cohort</div>
+              <div class="n-desc">No brief names a client that exists in the 520-row client table, so
+              personalisation is analogue matching, not history lookup: infer the vertical from cue
+              patterns (word-boundary matched, two-hit minimum), then read how that cohort actually
+              prices and negotiates.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">shortlist size, budget envelope, cohort priors</span></div></div>
+
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">Solve &amp; verify</span>
+          <div class="tier left">
+            <div class="node component">
+              <div class="n-name">_solve_staged</div>
+              <div class="n-type">[Component] two-stage allocation</div>
+              <div class="n-desc">Splits the <em>budget</em> — not the candidate count — between the
+              brief's primary inventory and supplementary inventory, capped at 30% supplementary.
+              Capping candidates did not work; capping money did.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">_rededupe_reach</div>
+              <div class="n-type">[Component] pool integrity</div>
+              <div class="n-desc">Re-splits shared-audience pool totals across the finally selected
+              cells, so the reach column sums to each pool's total exactly once after two independent
+              solves are concatenated.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">diagnose</div>
+              <div class="n-type">[Component] &rarr; Funnel, Refusal</div>
+              <div class="n-desc">Walks brief &rarr; city &rarr; daypart &rarr; relevance &rarr;
+              capacity &rarr; affordability &rarr; solver and reports the <em>first</em> stage that
+              emptied. "No screens matched" and "matched thousands, none affordable" need opposite
+              fixes; a blank deck says neither.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">Plan lines with full provenance columns</span></div></div>
+
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">Explanation</span>
+          <div class="tier left">
+            <div class="node component">
+              <div class="n-name">Plan.explain_line</div>
+              <div class="n-type">[Component] deterministic derivation</div>
+              <div class="n-desc">Per line: cost arithmetic, the price band and where the quote sits in
+              it, the band's actual source, win probability, who walks past, how the 6-slot loop and
+              dwell produce views per person, impressions, and why distinct people are fewer than
+              views. Every figure comes from a provenance column carried through the solvers.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">narrative_facts &rarr; Narrative</div>
+              <div class="n-type">[Component] LLM-written prose</div>
+              <div class="n-desc">Facts are computed, then handed to the mini deployment to write the
+              rep-facing narrative. <code>Narrative</code> subclasses <code>str</code> and carries its
+              own provenance, so the UI can always show whether prose was modelled or fell back.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">review_plan (critic)</div>
+              <div class="n-type">[Component] adversarial check</div>
+              <div class="n-desc">A second pass asks what the brief requested that the plan does not
+              deliver. It still flags the high-street corridor ask on every run, which is correct —
+              there is no such POI type to match.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">_fallback_narrative</div>
+              <div class="n-type">[Component] no-key path</div>
+              <div class="n-desc">Template prose from the same fact dict, so the plan is complete and
+              honest with zero API access.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Figure 3.</b> D5 components. The lower two groups are the deliverable's real
+    subject: an orchestrator that cannot explain its own output is a black box with extra steps.</figcaption>
+  </figure>
+
+  <h3 id="agent-loop">3.1b &nbsp;The agent loop &mdash; how D5 decides, and how we audit it</h3>
+  <p>Everything above is a pipeline: given a brief, it produces one plan. What makes D5 an
+  <em>agent</em> is what happens next &mdash; it inspects the plan it just built, decides whether it
+  can do better, changes one thing, and measures. The loop is <b>bounded by construction</b>,
+  because an unbounded loop against a metered API is a cost incident waiting to happen.</p>
+
+  <figure class="c4">
+    <div class="inner">
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">One iteration &mdash; at most three per brief</span>
+          <div class="tier left">
+            <div class="node component">
+              <div class="n-name">1. Observe</div>
+              <div class="n-type">[Component] &rarr; measured state</div>
+              <div class="n-desc">Lines, spend against budget, distinct audience pools reached,
+              candidates withheld by the shortlist, solver status, unsatisfiable brief asks.
+              <b>No model involved.</b> The agent reasons over arithmetic it did not produce.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">2. Decide</div>
+              <div class="n-type">[Component] gpt-5.4-nano &rarr; one lever</div>
+              <div class="n-desc">The model picks exactly one lever from a <b>closed menu of
+              four</b>, or <code>accept</code> to stop. The response is validated against that
+              vocabulary; an invented lever is recorded as a rejection and the deterministic rule
+              decides instead. The menu is gated on state, so a lever that provably cannot help is
+              never offered.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">3. Act</div>
+              <div class="n-type">[Component] &rarr; re-solve</div>
+              <div class="n-desc">The lever is applied and D4 solves again. Levers operate on the
+              already-priced candidate frame, so no re-quote is needed &mdash; a wider shortlist is
+              a larger slice of memory, not a rebuild.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">4. Measure &amp; keep-best</div>
+              <div class="n-type">[Component] &rarr; accept or revert</div>
+              <div class="n-desc">Scored on <b>this brief's own objective</b> &mdash; distinct
+              people for a reach brief, exposures per person for a frequency brief. A solve that
+              breaks the budget scores negative infinity rather than being compared: the budget is
+              a constraint, not a preference. Worse or equal is reverted.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">Why it terminates, and why trying is free</span>
+          <div class="tier left">
+            <div class="node decision">
+              <div class="n-name">Hard iteration bound</div>
+              <div class="n-desc">Three iterations maximum, and each lever may be used at most
+              once. Termination does not depend on the model choosing to stop.</div>
+            </div>
+            <div class="node decision">
+              <div class="n-name">Keep-best-so-far</div>
+              <div class="n-desc">A reverted lever leaves the plan exactly as it was, so a lever can
+              never make the output worse. That is what lets us tell the model an attempt costs
+              nothing &mdash; and stating it in the prompt was necessary: without it the model
+              reasoned from budget utilisation and accepted a plan the rule improved by 4.8%.</div>
+            </div>
+            <div class="node decision">
+              <div class="n-name">Counterfactual on every step</div>
+              <div class="n-desc">Each step records what the <b>deterministic rule</b> would have
+              chosen. This is the audit mechanism: it is how the 4.8% miss above was caught, and how
+              we can say whether the reasoning is earning its place rather than decorating a result
+              the rule would have reached anyway.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Figure 3b.</b> The agent loop. Observe is measured, Decide is the only step the
+    model touches, and Measure is the gate. The loop is honest about being inert: on briefs where
+    nothing was withheld and the first solve is already optimal, there is nothing for a lever to
+    improve, and the log says so rather than manufacturing activity.</figcaption>
+  </figure>
+
+  <table class="rel">
+    <thead><tr><th>Lever</th><th>What it changes</th><th>Offered only when</th></tr></thead>
+    <tbody>
+      <tr><td><code>grow_shortlist</code></td>
+          <td>Offers the optimiser up to 3&times; more candidates than the sizing heuristic chose</td>
+          <td>Inventory was actually withheld. This is the only lever that can improve on a
+              <em>proven</em> optimum, because it is the only one that <b>expands</b> the feasible
+              set &mdash; deleting options can never beat an exact solve.</td></tr>
+      <tr><td><code>raise_supplementary_share</code></td>
+          <td>Allows more secondary-priority inventory into the plan</td>
+          <td>The brief's inventory is split into priority tiers</td></tr>
+      <tr><td><code>drop_staging</code></td>
+          <td>Releases inventory that was being held back in stages</td>
+          <td>The plan was staged</td></tr>
+      <tr><td><code>shrink_shortlist</code></td>
+          <td>Tightens the candidate set</td>
+          <td><b>Greedy solves only.</b> Against a CP-SAT optimum it is provably incapable of
+              helping, so offering it would waste an iteration.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="note"><b>Measured honestly.</b> Across the six real briefs the loop improves three of
+  them and is correctly inert on the other three. The largest single gain in the system was not the
+  agent's at all &mdash; it was fixing the shortlist to order by audience-pool diversity for reach
+  objectives and by value for frequency objectives, which is worth +144% on campaign 1. We report it
+  that way round because the alternative is crediting the agent for a bug fix.</p>
+
+  <!-- 3.2 -->
+  <h3>3.2 &nbsp;D3 — Demand Forecasting &amp; Pricing Engine</h3>
+  <p>Four price signals with an explicit precedence, and a band that is always disclosed as whatever
+  it actually came from.</p>
+
+  <figure class="c4">
+    <div class="inner">
+      <div class="tier">
+        <div class="node component">
+          <div class="n-name">build_rate_card</div>
+          <div class="n-type">[Component] empirical percentiles</div>
+          <div class="n-desc">p10 / p50 / p90 of realised prices per screen &times; block &times; day
+          type, with a peer-group fallback for the ~1,224 never-booked screens. Basis is recorded per
+          cell: <code>own_history</code> or <code>cold_start_peer_fallback</code>.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">load_gbm_price_predictions</div>
+          <div class="n-type">[Component] ML point estimate</div>
+          <div class="n-desc">Loads the joblib and reads feature order from the model card. Collapses
+          the encoded day-type grain back to screen &times; block so the merge cannot fan out. Was
+          orphaned; is now genuinely on the serving path for 82.9% of cells.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">credibility blend</div>
+          <div class="n-type">[Component] history vs. model weight</div>
+          <div class="n-desc">Weight on the empirical price scales with booking count, floored at 0.50
+          — equal weight between a peer median (real evidence, wrong cell) and the GBM (right cell, no
+          label). The band is rescaled with the target, and the floor is clamped to the peer minimum so
+          no quote can fall below what the network has ever accepted.</div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">floor / target / cap per cell</span></div></div>
+
+      <div class="tier">
+        <div class="node component">
+          <div class="n-name">WinModel &middot; fit_win_model</div>
+          <div class="n-type">[Component] censored win/loss</div>
+          <div class="n-desc">Bookings alone are 99.7% wins by construction, so the identified
+          comparison lives <em>inside</em> lost leads: price-driven losses against non-price-driven
+          ones. Two bounds keep the fit identified — a base-ratio bound and an elasticity bound; either
+          one alone admits a degenerate fit that passes the other.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">RelationshipTable</div>
+          <div class="n-type">[Component] client cohort shift</div>
+          <div class="n-desc">Shifts the band by how the comparable client cohort actually negotiates
+          — lead time, bundle share, realised discount.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">event / ridership band adjustment</div>
+          <div class="n-type">[Component] date-aware forecasting</div>
+          <div class="n-desc">Genuine event overlap with the campaign window shifts the band; a
+          per-corridor OLS ridership trend shifts it for vehicle screens, but only where the trend
+          coefficient clears its significance test. Location screens correctly fall back to 1.0 —
+          there is no time series to fit.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">apply_audience_gate</div>
+          <div class="n-type">[Component] sanity gate</div>
+          <div class="n-desc">Blocks a price the audience evidence cannot support.</div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">quote(), quote_grid()</span></div></div>
+
+      <div class="tier">
+        <div class="node component wide">
+          <div class="n-name">PriceQuote</div>
+          <div class="n-type">[Component] the contract D4 and D5 consume</div>
+          <div class="n-desc">floor, target, cap, chosen price, <code>rate_card_basis</code>,
+          <code>p_win_at_price</code>, event adjustment and names, ridership note, and a warnings list
+          in plain language. Every downstream explanation is assembled from these fields — which is why
+          they are carried untouched through the optimiser.</div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Figure 4.</b> D3 components. Stated plainly, because it matters in the demo: the
+    band is p10/p50/p90 of historical prices and the calibration pins the optimum to the target, so
+    D3's recommended price is the target <em>by construction</em>. Widening that into true
+    willingness-to-pay is a redesign, not a tweak.</figcaption>
+  </figure>
+
+  <!-- 3.3 -->
+  <h3>3.3 &nbsp;D4 — Impressions Optimizer</h3>
+  <p>The only container with a formal optimisation model, and the only one where a modelling shortcut
+  produced a measurably wrong answer that looked right.</p>
+
+  <figure class="c4">
+    <div class="inner">
+      <div class="tier">
+        <div class="node component">
+          <div class="n-name">build_candidate_cells</div>
+          <div class="n-type">[Component] the decision space</div>
+          <div class="n-desc">One row per screen &times; block: people, dwell, visibility,
+          <code>cycles_per_slot</code>, pool id, price band, and <code>remaining_capacity =
+          6 &minus; already-booked slots</code> — a physical limit that is never exceeded regardless of
+          reach payoff.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">_reach_fraction &middot; _tangents</div>
+          <div class="n-type">[Component] concave envelope</div>
+          <div class="n-desc">Reach saturates: <code>1 &minus; exp(&minus;&lambda;)</code>. A concave
+          function is the minimum of its tangents, and a min-of-linear is exact under maximisation — so
+          the curve enters CP-SAT as tangent lines. <b>The &lambda;=0 tangent is mandatory:</b> every
+          tangent at &lambda;&gt;0 has a positive intercept, so without it the solver banks reach for
+          buying nothing.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">_realised_pool_reach</div>
+          <div class="n-type">[Component] dedup</div>
+          <div class="n-desc">Splits each shared-audience pool total across its selected cells, so the
+          reach column sums to the pool total exactly once. Naively summing people across screens
+          overcounts by roughly 25&times;.</div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">integer program</span></div><div class="edge"><span class="lbl">fallback path</span></div></div>
+
+      <div class="tier">
+        <div class="node component">
+          <div class="n-name">_cpsat_max_coverage</div>
+          <div class="n-type">[Component] OR-Tools CP-SAT</div>
+          <div class="n-desc">Integer slots per cell; hard budget; hard capacity; per-pool reach
+          variable bounded by every tangent. 30-second wall limit as a settable module constant, so a
+          demo cannot hang.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">_greedy_max_coverage</div>
+          <div class="n-type">[Component] bounded fallback</div>
+          <div class="n-desc">Marginal-reach-per-dollar greedy, compared against the best single
+          affordable item — which is what makes the <code>(1/2)(1&minus;1/e) &asymp; 31.6%</code>
+          budgeted guarantee hold. <code>(1&minus;1/e)</code> is the cardinality result and does not
+          apply here.</div>
+        </div>
+        <div class="node component">
+          <div class="n-name">allocate &middot; objective switch</div>
+          <div class="n-type">[Component] reach / frequency / impressions</div>
+          <div class="n-desc">Impressions are linear in slots; reach is concave. Choosing the objective
+          is choosing between buying breadth and buying depth, and the plan says which it bought.</div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">PROVENANCE_COLUMNS carried through the solve</span></div></div>
+
+      <div class="tier">
+        <div class="node component wide">
+          <div class="n-name">Provenance passthrough</div>
+          <div class="n-type">[Component] the explainability contract</div>
+          <div class="n-desc">Price fields, event fields, ridership note, and D1's audience inputs
+          (<code>people</code>, <code>dwell_seconds</code>, <code>visibility</code>,
+          <code>cycles_per_slot</code>, <code>event_people_bump</code>) are re-attached to every
+          selected row. Without them a line could state its impressions but not derive them — on the
+          deliverable whose entire subject is impressions.</div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Figure 5.</b> D4 components. Share-of-voice model: 6 rotation slots loop
+    continuously so a cycle is 60s; <code>cycles_per_slot = (dwell/60) &times; visibility</code>;
+    <code>&lambda;<sub>pool</sub> = &Sigma; slots &times; cycles_per_slot</code>;
+    <code>reach = people &times; (1 &minus; e<sup>&minus;&lambda;</sup>)</code>.</figcaption>
+  </figure>
+
+  <!-- 3.4 -->
+  <h3>3.4 &nbsp;D1, D2 and the LLM Gateway</h3>
+  <p>Where free text becomes structure, and where an inference chain substitutes for a sensor the
+  network does not have.</p>
+
+  <figure class="c4">
+    <div class="inner">
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">D1 — audience inference chain</span>
+          <div class="tier left">
+            <div class="node component">
+              <div class="n-name">route_block_riders &rarr; stop_share</div>
+              <div class="n-type">[Component]</div>
+              <div class="n-desc"><code>route_schedules.start_time</code> is the only time-of-day
+              signal in the entire dataset; without that join, ridership is a daily total and
+              time-of-day pricing is impossible.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">location / vehicle / corridor people</div>
+              <div class="n-type">[Component] pool construction</div>
+              <div class="n-desc">Three mechanisms, three pool namespaces
+              (<code>loc:</code> / <code>veh:</code> / <code>str:</code>), keyed
+              <code>kind:entity:block:day_type</code> — the identity D4's dedup depends on.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">build_audience_cube</div>
+              <div class="n-type">[Component] 133,956 rows</div>
+              <div class="n-desc">11,163 screens &times; 6 blocks &times; 2 day types. Block 1
+              (00:00&ndash;04:00) has zero scheduled trips network-wide and gets a stated residual, not
+              a hard zero.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">composition, affinity, confidence</div>
+              <div class="n-type">[Component] time-varying mix</div>
+              <div class="n-desc">Audience mix per screen &times; day type &times; block, so the claim
+              "office-professional at 08:00 Tuesday, event-goer at 14:00 Saturday" is expressible.
+              Weekend tilts are a separate table because the weekend inverts the weekday curve rather
+              than scaling it.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">label_archetypes</div>
+              <div class="n-type">[Component] LLM naming + guardrail</div>
+              <div class="n-desc">The model names an archetype from computed facts; a guardrail
+              rejects any label the facts do not support, and a template label is used instead.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">audience_profiles.csv &middot; audience_cube.csv</span></div></div>
+
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">D2 — brief comprehension and fit scoring</span>
+          <div class="tier left">
+            <div class="node component">
+              <div class="n-name">parse_brief</div>
+              <div class="n-type">[Component] deterministic first pass</div>
+              <div class="n-desc">Regex over the fixed brief template. Works with zero API key and is
+              exact on the sample briefs — which is why it stays as the base layer.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">read_brief + merge_into_brief</div>
+              <div class="n-type">[Component] the AI agent</div>
+              <div class="n-desc">On a rephrased brief the regex silently loses budget, duration and
+              every intent flag. The model reads the text into a closed vocabulary; the merge applies
+              regex-first precedence so the template path is never made worse, and intent fields carry
+              the evidence quote that justified them.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">apply_inventory_filter</div>
+              <div class="n-type">[Component] hard filter</div>
+              <div class="n-desc">Groups ORed, fields within a group ANDed, first match wins so a
+              shared screen is credited to the primary group and tagged with its priority.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">score_screens</div>
+              <div class="n-type">[Component] weighted fit + reasons</div>
+              <div class="n-desc">Daypart fit, audience-segment fit against real segments (not
+              keywords that match nothing), tier fit, and same-zone proximity — the coarsest available
+              stand-in for a walking radius, because the dataset has no coordinates. Emits a reason
+              string per screen.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band tight"><div class="edge"><span class="lbl">every model call, one door</span></div></div>
+
+      <div class="tier">
+        <div class="grp"><span class="grp-lbl">LLM Gateway — llm_agent.py</span>
+          <div class="tier left">
+            <div class="node component">
+              <div class="n-name">_client &middot; _load_env</div>
+              <div class="n-type">[Component] the only Azure client</div>
+              <div class="n-desc">Reads endpoint, version and both deployment names from environment.
+              <code>model=</code> takes the <em>deployment</em> name; the GPT-5 family rejects
+              <code>max_tokens</code> and non-default temperature, which is handled here once rather
+              than in five call sites.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">_cache &middot; _key</div>
+              <div class="n-type">[Component] content-addressed cache</div>
+              <div class="n-desc">Keyed on prompt + deployment + prompt version. Committed, so the
+              second run of any brief is free for everyone.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">Spend &middot; ledger &middot; max_calls</div>
+              <div class="n-type">[Component] hard cost cap</div>
+              <div class="n-desc">Per-tier token charging against a disk ledger, so re-running a script
+              cannot reset the allowance. Total spend to date: <b>$0.018 of $5.00</b>.</div>
+            </div>
+            <div class="node component">
+              <div class="n-name">call</div>
+              <div class="n-type">[Component] guarded invocation</div>
+              <div class="n-desc">Cache hit &rarr; cap check &rarr; call, with 429 back-off (500 rpm is
+              shared with every other team) and bounded JSON output.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Figure 6.</b> D1, D2 and the gateway. Note the direction of authority in D2:
+    language proposes, rules decide. The model can widen what the system understands; it cannot change
+    what a screen scores.</figcaption>
+  </figure>
+</section>
+
+<hr>
+
+<!-- ============================================================ 4 -->
+<section id="runtime">
+  <h2 class="sec"><span class="num">4</span>Runtime view — brief to plan</h2>
+  <p class="lede">One request, end to end. The two decision diamonds are the interesting part: this is
+  a pipeline that is allowed to stop.</p>
+
+  <div class="seq-wrap">
+    <div class="seq-key">
+      <span><b>Rep</b> Sales Rep</span><span><b>UI</b> D6 App</span><span><b>AD</b> adapters.py</span>
+      <span><b>D5</b> Orchestrator</span><span><b>LLM</b> Gateway</span><span><b>D2</b> Scorer</span>
+      <span><b>D3</b> Pricing</span><span><b>D4</b> Optimiser</span>
+    </div>
+    <ol class="seq">
+      <li><span class="hop">Rep &rarr; UI</span> upload / paste the brief</li>
+      <li><span class="hop">UI &rarr; AD</span> <code>orchestrate(brief, constraints)</code></li>
+      <li><span class="hop">AD &rarr; D5</span> <code>Orchestrator.plan(...)</code></li>
+      <li><span class="hop">D5 &rarr; D2</span> <code>parse_brief</code> &mdash; regex, deterministic, zero cost</li>
+      <li><span class="hop">D5 &rarr; LLM</span> <code>read_brief</code> (nano, cache checked first) &rarr; structured fields + evidence quotes</li>
+      <li><span class="hop">D5</span> <code>merge_into_brief</code> &mdash; regex-first precedence, so the template path is never made worse</li>
+      <li><span class="hop">D5</span> <code>resolve_market</code>, <code>resolve_blocks</code>, <code>unsupported_asks</code></li>
+    </ol>
+    <div class="branch stop">
+      <div class="b-lbl">Branch &mdash; market not resolvable</div>
+      <div class="b-body">Return a <code>Refusal</code> naming the three real markets. No plan is
+      produced, deliberately: a brief for a city the network does not serve has no correct plan.</div>
+    </div>
+    <div class="branch go">
+      <div class="b-lbl">Branch &mdash; resolved, continue</div>
+      <div class="b-body">
+        <ol class="seq">
+          <li><span class="hop">D5 &rarr; D2</span> <code>apply_inventory_filter</code> then <code>score_screens</code> &rarr; ranked shortlist + reason strings</li>
+          <li><span class="hop">D5</span> <code>shortlist_size</code>, <code>budget_verdict</code>, <code>infer_industry</code> &rarr; <code>build_cohort</code></li>
+          <li><span class="hop">D5 &rarr; D3</span> <code>quote_grid(cells, window, cohort)</code> &rarr; floor / target / cap / <code>p_win</code> / basis</li>
+        </ol>
+        <div class="branch stop">
+          <div class="b-lbl">Branch &mdash; cheapest line still unaffordable</div>
+          <div class="b-body">Return <code>Refusal(BUDGET_UNUSABLE)</code> with the funnel counts, so the
+          rep can see it was an affordability wall and not an inventory wall.</div>
+        </div>
+        <div class="branch go">
+          <div class="b-lbl">Branch &mdash; affordable, solve</div>
+          <div class="b-body">
+            <ol class="seq">
+              <li><span class="hop">D5 &rarr; D4</span> <code>allocate</code> on the primary-inventory budget (70%)</li>
+              <li><span class="hop">D5 &rarr; D4</span> <code>allocate</code> on the supplementary budget (30% cap)</li>
+              <li><span class="hop">D5</span> <code>_rededupe_reach</code> across both solves &mdash; each audience pool counted once, not twice</li>
+              <li><span class="hop">D5 &rarr; LLM</span> <code>narrative_facts</code> then <code>review_plan</code> (mini) &rarr; prose + unmet-ask critique</li>
+              <li><span class="hop">D5 &rarr; AD</span> <code>Plan</code>: lines, KPIs, and <code>explain_line</code> derivation per line</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ol class="seq">
+      <li><span class="hop">AD &rarr; UI</span> JSON-safe dicts only &mdash; no engine types cross the seam</li>
+      <li><span class="hop">UI &rarr; Rep</span> plan table, evidence drill-down, exportable proposal</li>
+    </ol>
+  </div>
+
+  <div class="note"><b>Every branch that ends in a refusal is a designed output, not an error path.</b>
+  A brief with an INR budget and no FX rate anywhere in the data is refused, because guessing a rate
+  and quoting from it is worse than stopping. A brief naming a city the network does not serve is
+  refused with the three real markets listed. Both were real out-of-sample failures before
+  <code>diagnose()</code> existed — two of three rephrased briefs crashed outright and the third was
+  confidently wrong.</div>
+</section>
+
+<hr>
+
+<!-- ============================================================ 5 -->
+<section id="map">
+  <h2 class="sec"><span class="num">5</span>Deliverable-to-architecture map</h2>
+  <p class="lede">The problem statement names a technique per deliverable. This is where each one
+  physically lives, and how the technique is honoured.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Deliverable</th><th>Required technique</th><th>Container / components</th><th>How the technique is realised</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="num">D1</td><td><b>Audience Profile Engine</b></td>
+          <td><span class="tag ai">AI Agent</span> <span class="tag det">Logical Rules</span></td>
+          <td><code>build_d1_audience_profiles.py</code></td>
+          <td>Rules build the rider &rarr; stop &rarr; screen chain and the audience cube; the agent
+          names archetypes from computed facts behind a guardrail.</td>
+        </tr>
+        <tr>
+          <td class="num">D2</td><td><b>Campaign&ndash;Screen Relevance Scorer</b></td>
+          <td><span class="tag ai">AI Agent</span> <span class="tag det">Logical Rules</span></td>
+          <td><code>build_d2_relevance_scorer.py</code> + <code>llm_agent.read_brief</code></td>
+          <td>The agent reads the brief into a closed vocabulary and explains the fit; rules do the
+          filtering and the fit arithmetic. Scoring is never a model guess.</td>
+        </tr>
+        <tr>
+          <td class="num">D3</td><td><b>Demand Forecasting &amp; Pricing Model</b></td>
+          <td><span class="tag ai">AI Agent</span> <span class="tag det">Logical Rules</span> <span class="tag opt">Forecasting</span></td>
+          <td><code>pricing_engine_d3.py</code>, <code>event_overlap.py</code>, <code>ridership_trend.py</code>, GBM + model card</td>
+          <td>Forecasting: GBM point estimate, censored win/loss elasticity, per-corridor OLS ridership
+          trend gated on significance, date-matched event overlap. Rules: band construction, peer
+          fallback, floor clamp, audience gate. Agent: plain-language quote rationale.</td>
+        </tr>
+        <tr>
+          <td class="num">D4</td><td><b>Impressions Optimizer</b></td>
+          <td><span class="tag opt">Optimization Model</span></td>
+          <td><code>build_d4_allocator.py</code></td>
+          <td>CP-SAT integer program: integer slots, hard budget, hard 6-slot capacity, deduplicated
+          concave reach via a tangent envelope; greedy fallback with a stated approximation bound.</td>
+        </tr>
+        <tr>
+          <td class="num">D5</td><td><b>Agentic Orchestration</b></td>
+          <td><span class="tag ai">Agent Orchestration</span></td>
+          <td><code>build_d5_orchestrator.py</code></td>
+          <td>Owns market resolution, daypart resolution, shortlist sizing, budget verdict, the staged
+          solve, the funnel diagnosis and refusals; drives the intake agent, the narrative agent and an
+          adversarial critic.</td>
+        </tr>
+        <tr>
+          <td class="num">D6</td><td><b>Unified Platform</b></td>
+          <td><span class="tag det">App development, UI/UX</span></td>
+          <td><code>app.py</code>, <code>ui.py</code>, <code>adapters.py</code></td>
+          <td>Four-step Streamlit flow with a live agent rail, per-screen evidence drill-down and
+          proposal export, sitting on a stub-backed façade so it is demonstrable without engines.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================================ 6 -->
+<section id="cross">
+  <h2 class="sec"><span class="num">6</span>Cross-cutting concerns</h2>
+
+  <h3>6.1 &nbsp;The determinism boundary</h3>
+  <p>The single most important architectural line in the system. It is enforced by the fact that
+  <code>llm_agent.py</code> is the only module holding an Azure client, so the boundary is visible in
+  the import graph rather than being a convention.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>The model may</th><th>The model may not</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Read free text into a closed, enumerated vocabulary</td>
+          <td>Produce a price, a score, a slot count or a reach figure</td>
+        </tr>
+        <tr>
+          <td>Name an audience archetype from computed facts, behind a guardrail</td>
+          <td>Choose which screens are in the plan</td>
+        </tr>
+        <tr>
+          <td>Write the rep-facing narrative from a computed fact dict</td>
+          <td>Introduce a number that is not already in that dict</td>
+        </tr>
+        <tr>
+          <td>Critique the plan for unmet asks in the brief</td>
+          <td>Silently repair a gap by substituting a proxy nobody agreed to</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The consequence is the property the demo rests on: <b>"why is this screen 60.97?" is answerable
+  from columns.</b> Remove the API key entirely and the system still plans, still prices, still
+  allocates and still explains — it loses fluency, not capability.</p>
+
+  <h3>6.2 &nbsp;The explainability contract</h3>
+  <p>Provenance columns are carried untouched from D3 and D1, through both solvers, onto the selected
+  rows. A worked line from campaign 6:</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Label</th><th>Derivation shown to the rep</th></tr></thead>
+      <tbody>
+        <tr><td>What it costs</td><td>60.97 per slot per day &times; 1 slot a day &times; 25 days = 1,524</td></tr>
+        <tr><td>The price range</td><td>59.71 cheapest / 60.99 typical / 62.16 highest — quoted right at the typical price; attributed to this screen's own sales, or to comparable screens when it has none</td></tr>
+        <tr><td>Where it's from</td><td>this screen's own past bookings, adjusted by our trained price model because there are only a few of them</td></tr>
+        <tr><td>Chance they say yes</td><td>93%, from how often real deals at this price relative to the typical price were actually lost on price</td></tr>
+        <tr><td>Who walks past</td><td>9,668 people on an average day, in this time block</td></tr>
+        <tr><td>How they see it</td><td>25 seconds of dwell; all 6 slots loop once a minute, so each person sees the loop ~0.4 times and 38% of them look. We own 1 of 6 slots &rarr; ~0.16 views per passer-by</td></tr>
+        <tr><td>Impressions</td><td>9,668 &times; 0.16 = 1,541 views a day, 38,519 over 25 days</td></tr>
+        <tr><td>Distinct people</td><td>1,424 a day — fewer than the views, because 1.1 views is still one person. Also why a 6th slot is worth less than a 1st slot elsewhere</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note ok"><b>The derivation surfaced an insight the numbers alone hid.</b> At one slot on a
+  25-second-dwell screen only ~16% of passers-by see the ad, and impressions &divide; reach is 1.08 —
+  so this plan is buying reach, not frequency. That is a strategy statement a rep can defend, and it
+  was invisible until the arithmetic was written out.</div>
+
+  <h3>6.3 &nbsp;Cost control and secrets</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Concern</th><th>Control</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>Shared $5 budget across four people</td><td>Nano tier by default; mini only for rep-facing prose</td><td><code>llm_agent.RATE_USD_PER_M</code>, per-call tier selection</td></tr>
+        <tr><td>Demo rehearsal burning the budget</td><td>Content-addressed cache, committed to the repo</td><td><code>eda_output/llm_cache.json</code></td></tr>
+        <tr><td>A re-run resetting the allowance</td><td>Call cap checked against a disk ledger, not a process counter</td><td><code>llm_spend.json</code> (git-ignored, per clone)</td></tr>
+        <tr><td>500 rpm shared with every other team</td><td>429 back-off with retry</td><td><code>llm_agent.call</code></td></tr>
+        <tr><td>Sample briefs costing anything at all</td><td>Gap-gate: the agent is only called when the regex left a gap — the six sample briefs make zero calls</td><td><code>merge_into_brief</code> precedence</td></tr>
+        <tr><td>Key leaking into git</td><td><code>.gitignore</code> for <code>.env*</code>, <code>secrets.toml</code>, <code>*.key</code>, <code>*.pem</code>; plus a pre-commit hook with four shape-based rules and no key material in it</td><td><code>.githooks/pre-commit</code>, installed via <code>git config core.hooksPath .githooks</code></td></tr>
+        <tr><td>Onboarding a teammate without sharing a key in chat</td><td><code>.env.example</code> with the exact variable names the code reads and no values</td><td><code>.env.example</code>, <code>secrets.toml.example</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note warn"><b>Stated honestly:</b> the ledger is a local file, so the cap is per clone,
+  not per team. Four laptops each get their own allowance. A genuinely shared cap needs shared state we
+  do not have; the real team-level control is the committed cache plus everyone watching
+  <code>usage()</code>.</div>
+
+  <h3>6.4 &nbsp;Refusal semantics</h3>
+  <p>Five refusal states, each naming the first funnel stage that emptied, because the remedies are
+  opposites: <code>MARKET_UNRESOLVED</code>, <code>DAYPART_UNMEASURABLE</code>,
+  <code>NO_RELEVANT_INVENTORY</code>, <code>NO_CAPACITY</code>, <code>BUDGET_UNUSABLE</code>. Warnings
+  are split into <code>client_facing_warnings</code> and <code>internal_warnings</code> so a rep never
+  reads a model diagnostic aloud in a meeting.</p>
+
+  <h3 id="disclosure">6.5 &nbsp;Disclosure semantics &mdash; the third state, between doing and refusing</h3>
+  <p>Refusing and delivering are not the only two outcomes, and an adversarial review of 14 briefs
+  found this system's real weakness was neither: it was <b>silence</b>. Three cases where it neither
+  did the thing nor said it could not.</p>
+
+  <table class="rel">
+    <thead><tr><th>Case</th><th>What it used to do</th><th>What it does now</th></tr></thead>
+    <tbody>
+      <tr><td><b>A regulated advertiser category</b><br><span class="muted">gambling, alcohol,
+          vaping, high-cost credit, and six more</span></td>
+          <td>Priced and optimised it like any other brief. <code>industry_vertical</code> existed as
+              a column on the leads table and was never consulted.</td>
+          <td>Three disclosures: the category, its pairing with campus / school / under-21 language,
+              and that <b>pricing confidence is low</b> &mdash; the rate card is built from what this
+              network charged for <em>inventory</em>, never from what it charged this <em>kind of
+              advertiser</em>, so a category with no historical analog has no evidence behind its
+              band. <b>Nothing is blocked.</b> We hold no policy data, and a platform that silently
+              refuses business it was not asked to adjudicate is as wrong as one that silently prices
+              it.</td></tr>
+      <tr><td><b>A market we do not sell in</b><br><span class="muted">"Las Hackland and Port
+          Meridian"</span></td>
+          <td>Resolved Las Hackland, dropped Port Meridian without a word. <code>resolve_market</code>
+              answers "which <em>one</em> market is this brief about" &mdash; correct for planning,
+              wrong for disclosure.</td>
+          <td>Names the unsupported place on the plan. The client would otherwise have received
+              coverage of half what they asked for, with nothing admitting so &mdash; the exact
+              failure mode this design claims to have eliminated.</td></tr>
+      <tr><td><b>The price we decline to raise</b></td>
+          <td>The 2,000-resample bootstrap of the demand elasticity was committed as a PNG and a JSON
+              that nothing in the product ever opened.</td>
+          <td>On the pricing screen with its interval and its four caveats. This matters more than an
+              ordinary chart because the finding is a <em>negative</em> result: unevidenced, "we do
+              not recommend charging more" sounds like a system that found nothing; with the interval
+              shown it is a measurement.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="note"><b>Deterministic floor, model for generalisation.</b> The category and proximity
+  patterns are word lists: always correct, no network, so neither capability depends on an API being
+  reachable. The model exists only for what a list cannot enumerate &mdash; "iGaming", "sportsbook",
+  "Port Meridian" &mdash; which is the out-of-sample case a fixed list fails at. One nano call per
+  brief carries both, cached and fenced. The determinism boundary is unchanged: the model returns
+  labels from a <b>closed vocabulary</b> plus place names, and deterministic code decides what they
+  mean. It cannot price, score or exclude anything. It can only cause a sentence to be written.</p>
+
+  <p class="note"><b>False positives are the real risk here, not misses.</b> A regulated-category
+  warning stapled to every honest plan is worse than no warning at all, and the first version of
+  these patterns did exactly that twice: bare <code>slots</code> matched all six real briefs, because
+  six rotation slots per time block is this domain's own vocabulary; and a bare <code>16-21</code>
+  range matched the literal <code>dim_slot</code> label "16-20 Evening", every budget ending in those
+  digits, and most date fragments. Hence <code>slot machine</code>, and age ranges that require an
+  age noun. Most of the 15 acceptance checks guarding this are false-positive checks rather than
+  capability checks, which is the ratio the risk actually has.</p>
+</section>
+
+<hr>
+
+<!-- ============================================================ 7 -->
+<section id="adr">
+  <h2 class="sec"><span class="num">7</span>Key design decisions</h2>
+  <p class="lede">Nine decisions where the alternative was tried, measured and rejected. Each was
+  verified against the data rather than argued from taste.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Decision</th><th>Rejected alternative</th><th>Measured consequence</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td>Model the reach curve as a min of tangent lines, <b>including the &lambda;=0 tangent</b></td><td>Tangents at positive &lambda; only</td><td>Every positive-&lambda; tangent has a positive intercept, so the solver banked reach for buying nothing — up to 69% of a pool at high &lambda;. Objective was inflated 33%; correcting it moved real reach +5.3%.</td></tr>
+        <tr><td class="num">2</td><td>Deduplicate reach by <code>pool_id</code></td><td>Sum <code>people</code> across selected screens</td><td>~25&times; overcount. Two screens in one station counted the same commuter twice.</td></tr>
+        <tr><td class="num">3</td><td>Fit the win model <b>inside</b> lost leads (price-driven vs. not)</td><td>Bookings vs. leads</td><td>Bookings are 99.7% wins by construction — unidentified. Before the fix, 100% of quotes sat at the cap; after, 0.02%, with 99.96% at an interior optimum.</td></tr>
+        <tr><td class="num">4</td><td>Two bounds on the win fit: base ratio <em>and</em> elasticity</td><td>Either bound alone</td><td>A base ratio of 12.75 fails the location bound but passes the steepness bound; an elasticity of 573 does the reverse. One bound admits a degenerate fit.</td></tr>
+        <tr><td class="num">5</td><td>Blend GBM and empirical price by booking credibility, floored at 0.50, with the band rescaled and the floor clamped to the peer minimum</td><td>Blend the target only</td><td>Moving the target and leaving the band put 69.5% of cells' target outside their own band and pinned 49.75% of quotes to the floor. With the clamp: floors below the network minimum went 1,308 &rarr; 0, minimum floor 1.52 &rarr; 13.93.</td></tr>
+        <tr><td class="num">6</td><td>Split the <b>budget</b> between primary and supplementary inventory (30% cap)</td><td>Cap the supplementary shortlist size</td><td>The shortlist cap failed outright — 100% of spend stayed supplementary because 26 candidates was ~5&times; the fundable line count. The budget split holds: reach falls 30,423 &rarr; 24,244, which is the correct trade for putting 70% into the inventory the brief anchors on.</td></tr>
+        <tr><td class="num">7</td><td>An LLM intake agent in front of the regex, regex-first on conflict</td><td>Regex only</td><td>On rephrased briefs the regex silently returned budget 0 and duration 0. Two of three out-of-sample briefs crashed; one was confidently wrong. After: one full plan ($4,455 of $4,500, reach 81,626), two correct refusals.</td></tr>
+        <tr><td class="num">8</td><td>Word-boundary cue matching with a two-hit minimum</td><td>Substring matching</td><td>Substring matching found "mall" inside "small" and "vertical" inside the field label "Industry Vertical" — reporting two contradictory gaps on one brief.</td></tr>
+        <tr><td class="num">9</td><td>Disclose unsupported asks; never proxy them</td><td>Map an unmatched ask to the nearest available category</td><td>The critic still flags "high-street retail corridors" on every campaign 6 run, correctly — there is no such POI type. A proxy nobody agreed to is worse than a stated gap.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================================ 8 -->
+<section id="deploy">
+  <h2 class="sec"><span class="num">8</span>Deployment view</h2>
+
+  <figure class="c4">
+    <div class="inner">
+      <div class="lane"><div class="lane-lbl">Developer laptop</div>
+        <div class="tier">
+          <div class="node container">
+            <div class="n-name">Python 3.11 process</div>
+            <div class="n-type">[Runtime] streamlit run app.py</div>
+            <div class="n-desc">UI, façade, D5 and all four engines in one process on
+            <code>localhost:8501</code>. pandas, numpy, scikit-learn, OR-Tools, openai, statsmodels.</div>
+          </div>
+          <div class="node store">
+            <div class="n-name">Working tree</div>
+            <div class="n-type">[Store] team-091/</div>
+            <div class="n-desc">Raw extracts, marts, model binary, prompt cache. Everything the demo
+            needs is on disk — no service dependency except the LLM.</div>
+          </div>
+          <div class="node store dashed">
+            <div class="n-name">.env</div>
+            <div class="n-type">[Store] never committed</div>
+            <div class="n-desc">Endpoint, API version, both deployment names, key. Loaded by
+            <code>_load_env</code>; Streamlit's <code>secrets.toml</code> is the UI-side equivalent and
+            is equally excluded.</div>
+          </div>
+        </div>
+      </div>
+      <div class="band tight"><div class="edge"><span class="lbl">HTTPS &mdash; requires company Wi-Fi or VPN</span></div><div class="edge"><span class="lbl">git push (same network requirement)</span></div></div>
+      <div class="lane"><div class="lane-lbl">Off-laptop</div>
+        <div class="tier">
+          <div class="node ext"><div class="n-name">Azure OpenAI</div><div class="n-type">[External] South India region</div><div class="n-desc">Two GPT-5 deployments. Off-network the endpoint returns <code>403</code>.</div></div>
+          <div class="node ext"><div class="n-name">Git remote</div><div class="n-type">[External] origin/main</div><div class="n-desc">Pre-commit hook runs locally before anything reaches it.</div></div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Figure 7.</b> Deployment. Single-process by choice for a hackathon; the façade is
+    what makes a later split into a service plus a thin client a change in one file.</figcaption>
+  </figure>
+
+  <h4>Cold-start sequence for a fresh clone</h4>
+  <ol class="body">
+    <li><code>git clone</code>, then <code>git config core.hooksPath .githooks</code> — the hook is not active until this is run.</li>
+    <li><code>cp .env.example .env</code> and fill in the five values. Never paste the key into chat, a notebook, or a commit.</li>
+    <li><code>python build_training_table.py</code> &rarr; <code>python encode_pricing_grain.py</code> &rarr; retrain the model. Required only if the marts are stale; both are committed.</li>
+    <li><code>python build_d1_audience_profiles.py</code> to refresh the audience cube.</li>
+    <li><code>python build_d5_orchestrator.py campaign_4.docx.parsed.txt</code> — headless end-to-end check before touching the UI.</li>
+    <li><code>streamlit run app.py</code>. With no key or no engines, the façade serves stubs and the flow still demonstrates.</li>
+  </ol>
+</section>
+
+<hr>
+
+<!-- ============================================================ 9 -->
+<section id="limits">
+  <h2 class="sec"><span class="num">9</span>Known limits and next steps</h2>
+  <p class="lede">Stated here rather than discovered by a judge. Each of these is a decision with a
+  reason, not an oversight.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Limit</th><th>Why it stands</th><th>What fixing it would take</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>D3's recommended price is the target by construction</b></td>
+          <td>The band is p10/p50/p90 of historical prices — median width 6.5% of target, revenue varying only 0.72% across it — and the win calibration pins the optimum to the target.</td>
+          <td>Deriving the band from willingness-to-pay rather than realised prices. A redesign, not a tweak. Defensible today if described exactly this way.</td>
+        </tr>
+        <tr>
+          <td><b>No walking radius</b></td>
+          <td>There are no coordinates in any of the 14 tables. "Same zone as the anchor POI" is the coarsest available proximity primitive.</td>
+          <td>Coordinates. Documented as an assumption everywhere it is used.</td>
+        </tr>
+        <tr>
+          <td><b><code>day_type</code> averaged out of the quote key</b></td>
+          <td>Median weekday/weekend spread is 5.0%, p90 12.9% — real but second-order against the band width above.</td>
+          <td>Carrying <code>day_type</code> through the quote key and the optimiser's cell identity.</td>
+        </tr>
+        <tr>
+          <td><b>Non-USD briefs are refused</b></td>
+          <td>No FX rate exists anywhere in the data. Guessing one and quoting from it is worse than stopping.</td>
+          <td>An explicit, stated rate in configuration — a disclosed assumption rather than an inference.</td>
+        </tr>
+        <tr>
+          <td><b>"High-street retail corridors" flagged as unmet on every run</b></td>
+          <td>There is no <code>high_street</code> POI type. The critic is right, and a proxy nobody agreed to would be worse.</td>
+          <td>Either a vocabulary entry mapped to a real POI type, or it stays a disclosure. Open decision.</td>
+        </tr>
+        <tr>
+          <td><b>Refreshed D1 not yet promoted</b></td>
+          <td>It flips block 1 from a hard zero to a residual, which changes the brief-editor contract the UI is being built against. Deliberately deferred past the demo.</td>
+          <td>Promoting it with the UI, together, after the demo.</td>
+        </tr>
+        <tr>
+          <td><b>D6 wiring incomplete</b></td>
+          <td>Wire points 1, 6 and 7 remain; 2&ndash;5 are covered by the single <code>orchestrate</code> call, which is the intended path.</td>
+          <td>Point <code>adapters.usage()</code> at <code>llm_agent.usage()</code> and drop the standalone Azure patch module — the gateway already owns that.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note"><b>Backup demo.</b> The stub-backed façade means the whole four-step flow runs with
+  no key, no network and no engines. Recording that walkthrough now is the insurance policy against a
+  403 on demo day — and a 403 is a network condition, not something a working key can fix.</div>
+</section>
+
+<footer>
+  Urban Media Commercial Intelligence Platform &middot; C4 system design &middot; Team 091 &middot;
+  Agentic AI Hackathon 2026. Diagrams follow Simon Brown's C4 model (context, container, component);
+  every relationship table names the interface, not just the arrow.
+</footer>
+
+</div>
+</body>
+</html>
