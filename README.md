@@ -18,8 +18,7 @@ why, including what it could **not** do.
 > **My contribution:** the Streamlit application (D6), the relevance scoring
 > pipeline (D2) and part of the pricing model (D3).
 >
-> **Team:** Team 091 (Aditya Jakhotia, Yeswanth Vuyyuru, Akshit Ahuja and
-> contributors). Original development happened in an internal repository.
+> **Team:** Team 091 . Original development happened in an internal repository.
 
 See [PROBLEM_STATEMENT.md](PROBLEM_STATEMENT.md) for the challenge this answers.
 
