@@ -8,11 +8,15 @@ send: which of **11,163 screens** to book, in which time blocks, at what price,
 with the reach and frequency that plan actually buys — and a written account of
 why, including what it could **not** do.
 
+[![Watch the 90-second demo](docs/demo-thumbnail.png)](https://youtu.be/AtGTnpdT2Gc)
+
+▶ **[Demo (90 seconds)](https://youtu.be/AtGTnpdT2Gc)** · 📖 [Full walkthrough (10 min)](https://youtu.be/1EFneOp2JrU)
+
 > **Status: code-only release.** This is a hackathon project built by a
 > team in the Agentic AI Hackathon 2026 at my company. The datasets supplied for the
 > event are not redistributed, so the app will not run end to end from this
-> repo alone. A demo video walks through the working application (see the
-> repo's Releases / link below). All API keys used during the event have been
+> repo alone. The demo and walkthrough videos above show the working
+> application. All API keys used during the event have been
 > revoked; no credentials are included.
 >
 > **My contribution:** the Streamlit application (D6), the relevance scoring
